@@ -145,7 +145,7 @@ export function TransactionFilters({ kind, categoryIds, sort, query }: Props) {
               aria-pressed={selected.has(c.id)}
               className={cn(
                 "flex h-8 items-center gap-1.5 rounded-full border py-1 pr-3 pl-1 text-sm transition-colors hover:bg-muted",
-                selected.has(c.id) && "border-primary/50 bg-accent text-accent-foreground",
+                selected.has(c.id) && "border-primary-strong/50 bg-accent text-accent-foreground",
               )}
             >
               <CategoryBadge

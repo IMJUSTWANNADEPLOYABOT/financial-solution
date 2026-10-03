@@ -79,14 +79,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {mode === "login" ? (
           <>
             Нет аккаунта?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
+            <Link href="/register" className="font-medium text-primary-strong hover:underline">
               Зарегистрироваться
             </Link>
           </>
         ) : (
           <>
             Уже есть аккаунт?{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link href="/login" className="font-medium text-primary-strong hover:underline">
               Войти
             </Link>
           </>

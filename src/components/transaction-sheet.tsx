@@ -229,7 +229,7 @@ function TransactionForm({
       <div>
         <div
           className={cn(
-            "flex items-baseline gap-2 border-b-2 border-border pb-1 transition-colors focus-within:border-primary",
+            "flex items-baseline gap-2 border-b-2 border-border pb-1 transition-colors focus-within:border-primary-strong",
             amountError && "border-destructive focus-within:border-destructive",
           )}
         >
@@ -262,7 +262,7 @@ function TransactionForm({
             type="button"
             size="sm"
             variant={date === d.value ? "secondary" : "ghost"}
-            className={cn("h-8 rounded-full px-3", date === d.value && "text-primary")}
+            className={cn("h-8 rounded-full px-3", date === d.value && "text-primary-strong")}
             onClick={() => setDate(d.value)}
           >
             {d.label}
@@ -276,7 +276,7 @@ function TransactionForm({
               variant={date !== today && date !== yesterday ? "secondary" : "ghost"}
               className={cn(
                 "h-8 rounded-full px-3",
-                date !== today && date !== yesterday && "text-primary",
+                date !== today && date !== yesterday && "text-primary-strong",
               )}
             >
               <CalendarDays />
@@ -322,7 +322,7 @@ function TransactionForm({
               aria-pressed={categoryId === c.id}
               className={cn(
                 "flex flex-col items-center gap-1.5 rounded-xl border border-transparent px-1 py-2 text-center transition-colors hover:bg-muted disabled:opacity-60",
-                categoryId === c.id && "border-primary/40 bg-accent",
+                categoryId === c.id && "border-primary-strong/40 bg-accent",
               )}
             >
               <CategoryBadge icon={c.icon} color={c.color} size="lg" />

@@ -53,7 +53,7 @@ export function SpendingChart({ data, title }: { data: SpendingPoint[]; title: s
             />
             <Bar
               dataKey="total"
-              fill="var(--primary)"
+              fill="var(--primary-strong)"
               radius={[4, 4, 0, 0]}
               maxBarSize={28}
               isAnimationActive={false}

@@ -33,7 +33,7 @@ export function SummaryCards({ expense, income, balance, days }: Props) {
         <Card className="gap-1 px-5 py-4">
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             <ArrowUpRight
-              className={cn("size-4", balance < 0 ? "text-destructive" : "text-primary")}
+              className={cn("size-4", balance < 0 ? "text-destructive" : "text-primary-strong")}
               aria-hidden
             />
             Баланс

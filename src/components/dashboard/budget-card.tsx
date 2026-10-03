@@ -29,7 +29,7 @@ function Meter({ spent, limit }: { spent: number; limit: number }) {
       <div
         className={cn(
           "h-full rounded-full transition-[width]",
-          ratio >= 1 ? "bg-destructive" : ratio >= 0.85 ? "bg-amber-500" : "bg-primary",
+          ratio >= 1 ? "bg-destructive" : ratio >= 0.85 ? "bg-amber-500" : "bg-primary-strong",
         )}
         style={{ width: `${Math.min(ratio, 1) * 100}%` }}
       />
@@ -55,7 +55,7 @@ export function BudgetCard({
         </div>
         <Link
           href="/settings#budgets"
-          className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-primary hover:bg-accent"
+          className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-primary-strong hover:bg-accent"
         >
           Задать
         </Link>

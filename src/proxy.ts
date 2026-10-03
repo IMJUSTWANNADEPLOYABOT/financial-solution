@@ -33,5 +33,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|manifest.webmanifest|sw.js|offline.html|icons/).*)"],
+  matcher: ["/((?!_next/|manifest.webmanifest|sw.js|boot-check.js|offline.html|icons/).*)"],
 };

@@ -129,7 +129,7 @@ function BottomLink({
       href={href}
       className={cn(
         "flex flex-col items-center gap-1 text-[11px] text-muted-foreground transition-colors",
-        active && "text-primary",
+        active && "text-primary-strong",
       )}
     >
       <Icon className="size-5" strokeWidth={active ? 2.2 : 1.8} />

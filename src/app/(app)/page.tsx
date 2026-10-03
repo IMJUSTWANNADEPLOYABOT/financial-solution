@@ -129,7 +129,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
                 <h3 className="text-sm font-semibold">Последние операции</h3>
                 <Link
                   href={`/transactions?${periodQuery}`}
-                  className="flex items-center text-xs text-primary hover:underline"
+                  className="flex items-center text-xs text-primary-strong hover:underline"
                 >
                   Все
                   <ChevronRight className="size-3.5" />

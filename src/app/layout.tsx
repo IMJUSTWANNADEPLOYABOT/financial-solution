@@ -48,6 +48,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Сторож запуска: показывает ошибки, если приложение не стартовало (см. public/boot-check.js). */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src={`${BASE_PATH}/boot-check.js`} />
+      </head>
       <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>
