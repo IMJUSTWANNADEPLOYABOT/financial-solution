@@ -1,0 +1,13 @@
+services:
+  finance-auditor:
+    build: .
+    image: finance-auditor:latest
+    container_name: finance-auditor
+    restart: unless-stopped
+    # Слушаем только localhost — наружу приложение отдаёт Nginx.
+    ports:
+      - "127.0.0.1:3010:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_PATH=/app/data/finance.db
