@@ -1,7 +1,10 @@
 // Сторож запуска. Если React-приложение не запустилось за 10 секунд (не загрузились скрипты,
 // синтаксическая ошибка, падение до гидрации), показываем текст пойманных ошибок вместо пустого
 // экрана — его можно сфотографировать и прислать разработчику.
+// Дополнительно отправляет короткий диагностический отчёт на сервер (смотреть: docker logs).
 (function () {
+  var REPORT_URL = "/finance-auditor/api/diag";
+  var pageId = Math.random().toString(36).slice(2, 8);
   var errors = [];
   function add(message) {
     if (errors.length < 10) errors.push(String(message).slice(0, 500));
@@ -24,6 +27,61 @@
     var reason = e.reason;
     add("Promise: " + ((reason && (reason.stack || reason.message)) || reason));
   });
+
+  function describe(el) {
+    if (!el) return null;
+    var cls = typeof el.className === "string" ? el.className.slice(0, 80) : "";
+    return el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (cls ? "." + cls : "");
+  }
+
+  function report(stage) {
+    try {
+      var body = document.body;
+      var bodyStyle = body ? getComputedStyle(body) : null;
+      var main = document.querySelector("main");
+      var rect = main ? main.getBoundingClientRect() : null;
+      var resources = (performance.getEntriesByType ? performance.getEntriesByType("resource") : [])
+        .filter(function (r) { return r.name.indexOf("/_next/static/") !== -1; })
+        .map(function (r) {
+          return r.name.split("/").pop() + " " + Math.round(r.duration) + "ms " +
+            (r.responseStatus || "?") + " " + (r.transferSize || 0) + "b";
+        });
+      var data = {
+        stage: stage,
+        page: pageId,
+        url: location.pathname + location.search,
+        ua: navigator.userAgent,
+        hydrated: !!window.__faHydrated,
+        readyState: document.readyState,
+        errors: errors,
+        viewport: innerWidth + "x" + innerHeight + "@" + (window.devicePixelRatio || 1),
+        htmlClass: document.documentElement.className.slice(0, 120),
+        bodyBg: bodyStyle && bodyStyle.backgroundColor,
+        bodyColor: bodyStyle && bodyStyle.color,
+        textLength: body ? (body.innerText || "").trim().length : -1,
+        textSample: body ? (body.innerText || "").trim().slice(0, 120) : "",
+        main: rect ? Math.round(rect.width) + "x" + Math.round(rect.height) + " opacity=" + getComputedStyle(main).opacity + " visibility=" + getComputedStyle(main).visibility : null,
+        center: describe(document.elementFromPoint(innerWidth / 2, innerHeight / 2)),
+        sw: "serviceWorker" in navigator ? (navigator.serviceWorker.controller ? "active" : "none") : "unsupported",
+        cookies: navigator.cookieEnabled,
+        resources: resources.slice(0, 30),
+      };
+      var json = JSON.stringify(data);
+      if (!(navigator.sendBeacon && navigator.sendBeacon(REPORT_URL, json))) {
+        fetch(REPORT_URL, { method: "POST", body: json, keepalive: true }).catch(function () {});
+      }
+    } catch (e) {
+      try {
+        navigator.sendBeacon(REPORT_URL, JSON.stringify({ stage: stage + ":failed", page: pageId, error: String(e) }));
+      } catch (ignored) {
+        void ignored;
+      }
+    }
+  }
+
+  // Сигнал «скрипт выполнился» и полный отчёт после загрузки и через 10 секунд.
+  report("start");
+  window.addEventListener("load", function () { setTimeout(function () { report("load"); }, 500); });
 
   function resetAndReload() {
     var tasks = [];
@@ -48,6 +106,7 @@
   }
 
   setTimeout(function () {
+    report("10s");
     if (window.__faHydrated) return;
     var box = document.createElement("div");
     box.setAttribute(
