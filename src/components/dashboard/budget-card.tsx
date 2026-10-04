@@ -46,22 +46,8 @@ export function BudgetCard({
   categories: Category[];
   today: string;
 }) {
-  if (!status) {
-    return (
-      <Card className="flex-row items-center justify-between gap-3 px-5 py-4">
-        <div>
-          <p className="text-sm font-medium">Лимит на месяц не задан</p>
-          <p className="text-xs text-muted-foreground">Установи лимит, чтобы следить за остатком</p>
-        </div>
-        <Link
-          href="/settings#budgets"
-          className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-primary-strong hover:bg-accent"
-        >
-          Задать
-        </Link>
-      </Card>
-    );
-  }
+  // Без лимитов карточку не показываем: лимит задаётся в настройках.
+  if (!status) return null;
 
   const byId = new Map(categories.map((c) => [c.id, c]));
   const month = format(
