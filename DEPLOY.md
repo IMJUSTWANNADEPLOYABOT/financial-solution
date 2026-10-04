@@ -54,11 +54,25 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## 3. Обновление
 
+Обычное обновление (без изменений в базе):
+
 ```bash
 cd /opt/finance-auditor
 git pull
 docker compose up -d --build
 docker image prune -f            # необязательно: удалить старые образы
+```
+
+Если обновление содержит новую миграцию (файл в `drizzle/`, меняющий данные), сначала сделайте копию базы.
+База работает в режиме WAL, поэтому копировать файл нужно при остановленном контейнере:
+
+```bash
+cd /opt/finance-auditor
+git pull
+docker compose stop
+cp data/finance.db data/finance.db.bak-$(date +%F-%H%M)
+docker compose up -d --build
+docker image prune -f            # необязательно
 ```
 
 Новые миграции БД применятся автоматически. Сессии пользователей сохраняются: они лежат в той же БД.

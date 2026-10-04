@@ -16,6 +16,8 @@ const NAV = [
   { href: "/settings", label: "Настройки", icon: Settings },
 ] as const;
 
+const SETTINGS = NAV[2];
+
 function useIsActive() {
   const pathname = usePathname();
   return (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -47,7 +49,9 @@ export function AppShell({ username, children }: { username: string; children: R
   const isActive = useIsActive();
 
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
+    // На телефоне прокручивается только середина экрана: шапка и меню не участвуют в «резиновой»
+    // прокрутке iOS и не отрываются от краёв. На ПК прокручивается всё окно, как обычно.
+    <div className="flex h-dvh flex-col overflow-hidden md:grid md:h-auto md:min-h-dvh md:grid-cols-[15rem_1fr] md:overflow-visible">
       <RefreshOnFocus />
 
       {/* Сайдбар на ПК */}
@@ -81,26 +85,36 @@ export function AppShell({ username, children }: { username: string; children: R
         <div className="mt-auto truncate px-3 text-xs text-muted-foreground">@{username}</div>
       </aside>
 
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {/* Шапка на телефоне */}
-        <header className="sticky top-0 z-30 flex items-center gap-2.5 border-b bg-background/85 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
+        <header className="z-30 flex shrink-0 items-center gap-2.5 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden">
           <div className="flex h-14 items-center gap-2.5">
             <Logo className="size-7" />
             <span className="font-semibold tracking-tight">Finance Auditor</span>
           </div>
+          <Link
+            href={SETTINGS.href}
+            aria-label={SETTINGS.label}
+            className={cn(
+              "-mr-2 ml-auto flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors",
+              isActive(SETTINGS.href) && "bg-accent text-primary-strong",
+            )}
+          >
+            <Settings className="size-5" strokeWidth={isActive(SETTINGS.href) ? 2.2 : 1.8} />
+          </Link>
         </header>
 
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12">
-          {children}
-        </main>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:overflow-visible">
+          <main className="mx-auto w-full max-w-5xl px-4 pt-4 pb-8 md:px-8 md:pt-8 md:pb-12">
+            {children}
+          </main>
+        </div>
       </div>
 
       {/* Нижняя навигация на телефоне */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-safe backdrop-blur-md md:hidden">
-        <div className="grid h-16 grid-cols-4 items-center">
-          {NAV.slice(0, 2).map((item) => (
-            <BottomLink key={item.href} {...item} active={isActive(item.href)} />
-          ))}
+      <nav className="z-40 shrink-0 border-t bg-background pb-safe md:hidden">
+        <div className="grid h-16 grid-cols-3 items-center">
+          <BottomLink {...NAV[0]} active={isActive(NAV[0].href)} />
           <div className="flex justify-center">
             <button
               type="button"
@@ -111,7 +125,7 @@ export function AppShell({ username, children }: { username: string; children: R
               <Plus className="size-7" strokeWidth={2.4} />
             </button>
           </div>
-          <BottomLink {...NAV[2]} active={isActive(NAV[2].href)} />
+          <BottomLink {...NAV[1]} active={isActive(NAV[1].href)} />
         </div>
       </nav>
     </div>

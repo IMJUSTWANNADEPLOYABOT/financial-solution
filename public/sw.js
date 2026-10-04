@@ -1,7 +1,7 @@
 // Finance Auditor service worker.
 // Статику кэшируем (cache-first), страницы и данные всегда берём из сети —
 // так история всегда актуальна, а без сети показывается заглушка.
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC_CACHE = `fa-static-${VERSION}`;
 // "/finance-auditor/" — с завершающим слэшем, к нему дописываются пути ресурсов.
 const SCOPE = new URL(self.registration.scope).pathname.replace(/\/?$/, "/");

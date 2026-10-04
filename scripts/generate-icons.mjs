@@ -4,25 +4,21 @@ import sharp from "sharp";
 
 const glyph = (scale) => `
   <g transform="translate(${16 - 16 * scale} ${16 - 16 * scale}) scale(${scale})">
-    <path d="M10 21.5V10.5h9M10 16h7" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    <circle cx="22" cy="21" r="2.2" fill="#ffffff"/>
+    <path d="M10 21.5V10.5h9M10 16h7" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="22" cy="21" r="2.2" fill="${INK}"/>
   </g>`;
 
-const gradient = `
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#a78bfa"/>
-      <stop offset="1" stop-color="#7c3aed"/>
-    </linearGradient>
-  </defs>`;
+// Цвета как у логотипа в светлой теме: акцент --primary и текст на нём --primary-foreground.
+const BG = "#d9bce6";
+const INK = "#3b1f47";
 
 // Обычная иконка: скруглённый квадрат.
-const rounded = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${gradient}
-  <rect width="32" height="32" rx="8" fill="url(#g)"/>${glyph(1)}</svg>`;
+const rounded = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="${BG}"/>${glyph(1)}</svg>`;
 
 // Maskable: фон на весь холст, глиф в безопасной зоне (80%).
-const maskable = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${gradient}
-  <rect width="32" height="32" fill="url(#g)"/>${glyph(0.75)}</svg>`;
+const maskable = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="${BG}"/>${glyph(0.75)}</svg>`;
 
 writeFileSync("public/icons/icon.svg", rounded.trim());
 

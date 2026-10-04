@@ -23,6 +23,7 @@ import {
   Gift,
   Globe,
   GraduationCap,
+  HandHeart,
   HandCoins,
   Hammer,
   HeartPulse,
@@ -32,6 +33,7 @@ import {
   Music,
   Palette,
   PawPrint,
+  Percent,
   PiggyBank,
   Pill,
   Pizza,
@@ -47,6 +49,7 @@ import {
   Sofa,
   Sparkles,
   Stethoscope,
+  Toothbrush,
   TrainFront,
   TreePine,
   TrendingUp,
@@ -60,7 +63,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { Boy, ChocolateBar, YoungMan } from "@/lib/custom-icons";
+import { Boy, ChocolateBar, Tooth, YoungMan } from "@/lib/custom-icons";
 
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   "shopping-cart": ShoppingCart,
@@ -86,6 +89,8 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   "heart-pulse": HeartPulse,
   pill: Pill,
   stethoscope: Stethoscope,
+  tooth: Tooth,
+  toothbrush: Toothbrush,
   dumbbell: Dumbbell,
   popcorn: Popcorn,
   film: Film,
@@ -108,6 +113,7 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   "young-man": YoungMan,
   "paw-print": PawPrint,
   gift: Gift,
+  "hand-heart": HandHeart,
   "tree-pine": TreePine,
   umbrella: Umbrella,
   globe: Globe,
@@ -121,6 +127,7 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   coins: Coins,
   wallet: Wallet,
   "piggy-bank": PiggyBank,
+  percent: Percent,
   "trending-up": TrendingUp,
   ellipsis: Ellipsis,
 };
