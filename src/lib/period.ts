@@ -46,12 +46,16 @@ function isISODate(s: unknown): s is string {
 
 /** Сегодняшняя дата в часовом поясе пользователя. */
 export function todayInTimezone(timezone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
+  // Собираем из частей: готовая строка даты (даже у en-CA) зависит от версии ICU в браузере.
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).formatToParts(new Date());
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

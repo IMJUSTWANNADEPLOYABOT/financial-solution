@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { categories, users } from "@/db/schema";
 import { zodFieldErrors, type ActionResult } from "@/lib/action-result";
 import { createSession, destroyAllSessions, destroySession, requireUser } from "@/lib/auth";
+import { BASE_PATH } from "@/lib/constants";
 import { DEFAULT_CATEGORIES } from "@/lib/default-categories";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { rateLimit } from "@/lib/rate-limit";
@@ -35,6 +36,18 @@ function isValidTimezone(tz: string) {
 async function clientIp() {
   const h = await headers();
   return h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+}
+
+/**
+ * redirect() для форм входа/выхода. Если форма ушла до загрузки JS (обычный POST), Next кладёт
+ * путь в Location как есть, без basePath, и браузер уходит на корень домена. Поэтому для такого
+ * запроса добавляем basePath сами; при отправке через JS (заголовок Next-Action) Next делает это сам.
+ * Главная — без завершающего слэша: иначе Next отвечает ещё одним редиректом 308, и Safari после
+ * него повторяет исходный POST.
+ */
+async function redirectTo(path: "/" | "/login"): Promise<never> {
+  const isFetchAction = (await headers()).has("next-action");
+  redirect(isFetchAction ? path : path === "/" ? BASE_PATH : `${BASE_PATH}${path}`);
 }
 
 export type AuthState = ActionResult | null;
@@ -75,7 +88,7 @@ export async function register(_prev: AuthState, formData: FormData): Promise<Au
   });
 
   await createSession(userId);
-  redirect("/");
+  return redirectTo("/");
 }
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
@@ -93,18 +106,18 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   if (!user || !valid) return { ok: false, error: "Неверный логин или пароль" };
 
   await createSession(user.id);
-  redirect("/");
+  return redirectTo("/");
 }
 
 export async function logout() {
   await destroySession();
-  redirect("/login");
+  return redirectTo("/login");
 }
 
 export async function logoutEverywhere() {
   const user = await requireUser();
   await destroyAllSessions(user.id);
-  redirect("/login");
+  return redirectTo("/login");
 }
 
 export async function changePassword(_prev: AuthState, formData: FormData): Promise<AuthState> {
