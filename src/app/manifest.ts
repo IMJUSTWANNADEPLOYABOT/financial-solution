@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     id: BASE_PATH,
     name: APP_NAME,
-    short_name: "Finance",
+    short_name: "Финансы",
     description: "Учёт личных расходов и доходов",
     lang: "ru",
     start_url: BASE_PATH,

@@ -2,15 +2,17 @@
 import { writeFileSync } from "node:fs";
 import sharp from "sharp";
 
+// Буква «О» (она же монетка) и блёстка рядом. Те же фигуры — в src/components/logo.tsx.
 const glyph = (scale) => `
   <g transform="translate(${16 - 16 * scale} ${16 - 16 * scale}) scale(${scale})">
-    <path d="M10 21.5V10.5h9M10 16h7" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    <circle cx="22" cy="21" r="2.2" fill="${INK}"/>
+    <circle cx="14.5" cy="17.5" r="7" stroke="${INK}" stroke-width="2.8" fill="none"/>
+    <path d="${SPARKLE}" fill="${INK}"/>
   </g>`;
 
 // Цвета как у логотипа в светлой теме: акцент --primary и текст на нём --primary-foreground.
 const BG = "#d9bce6";
 const INK = "#3b1f47";
+const SPARKLE = "M23.5 4.5Q23.5 9 28 9Q23.5 9 23.5 13.5Q23.5 9 19 9Q23.5 9 23.5 4.5Z";
 
 // Обычная иконка: скруглённый квадрат.
 const rounded = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">

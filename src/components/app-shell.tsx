@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, ListOrdered, Plus, Settings } from "lucide-react";
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  LayoutDashboard,
+  ListOrdered,
+  Plus,
+  Settings,
+} from "lucide-react";
 
 import { Logo } from "@/components/logo";
 import { useTransactionSheet } from "@/components/transaction-sheet";
 import { Button } from "@/components/ui/button";
+import type { TransactionKind } from "@/db/schema";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -47,6 +55,21 @@ function RefreshOnFocus() {
 export function AppShell({ username, children }: { username: string; children: React.ReactNode }) {
   const { open } = useTransactionSheet();
   const isActive = useIsActive();
+  const [chooserOpen, setChooserOpen] = useState(false);
+
+  function addFromChooser(kind: TransactionKind) {
+    setChooserOpen(false);
+    open({ kind });
+  }
+
+  useEffect(() => {
+    if (!chooserOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setChooserOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chooserOpen]);
 
   return (
     // На телефоне прокручивается только середина экрана: шапка и меню не участвуют в «резиновой»
@@ -58,7 +81,7 @@ export function AppShell({ username, children }: { username: string; children: R
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r bg-sidebar px-4 py-6 md:flex">
         <Link href="/" className="flex items-center gap-2.5 px-2">
           <Logo />
-          <span className="font-semibold tracking-tight">Finance Auditor</span>
+          <span className="font-semibold tracking-tight">Олечкины финансы</span>
         </Link>
         <Button size="lg" className="h-10 justify-start gap-2 px-3" onClick={() => open()}>
           <Plus />
@@ -90,7 +113,7 @@ export function AppShell({ username, children }: { username: string; children: R
         <header className="z-30 flex shrink-0 items-center gap-2.5 border-b bg-background px-4 pt-[env(safe-area-inset-top)] md:hidden">
           <div className="flex h-14 items-center gap-2.5">
             <Logo className="size-7" />
-            <span className="font-semibold tracking-tight">Finance Auditor</span>
+            <span className="font-semibold tracking-tight">Олечкины финансы</span>
           </div>
           <Link
             href={SETTINGS.href}
@@ -111,6 +134,41 @@ export function AppShell({ username, children }: { username: string; children: R
         </div>
       </div>
 
+      {/* Выбор типа над «+» на телефоне. Тип выбирается до открытия формы: в форме сразу открывается
+          клавиатура, и переключатель типа под ней был бы недоступен. */}
+      <div
+        aria-hidden={!chooserOpen}
+        className={cn(
+          "fixed inset-0 z-30 bg-black/40 backdrop-blur-[2px] transition-opacity duration-200 md:hidden",
+          chooserOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        onClick={() => setChooserOpen(false)}
+      />
+      <div
+        role="menu"
+        aria-label="Тип операции"
+        aria-hidden={!chooserOpen}
+        className={cn(
+          "fixed inset-x-0 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 flex flex-col items-center gap-2.5 transition-all duration-200 md:hidden",
+          chooserOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
+        )}
+      >
+        <ChooserButton
+          label="Доход"
+          icon={ArrowDownLeft}
+          className="text-success"
+          tabIndex={chooserOpen ? 0 : -1}
+          onClick={() => addFromChooser("income")}
+        />
+        <ChooserButton
+          label="Расход"
+          icon={ArrowUpRight}
+          className="text-primary-strong"
+          tabIndex={chooserOpen ? 0 : -1}
+          onClick={() => addFromChooser("expense")}
+        />
+      </div>
+
       {/* Нижняя навигация на телефоне */}
       <nav className="z-40 shrink-0 border-t bg-background pb-safe md:hidden">
         <div className="grid h-16 grid-cols-3 items-center">
@@ -118,11 +176,19 @@ export function AppShell({ username, children }: { username: string; children: R
           <div className="flex justify-center">
             <button
               type="button"
-              onClick={() => open()}
-              aria-label="Добавить операцию"
+              onClick={() => setChooserOpen((o) => !o)}
+              aria-label={chooserOpen ? "Закрыть" : "Добавить операцию"}
+              aria-expanded={chooserOpen}
+              aria-haspopup="menu"
               className="-mt-7 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95"
             >
-              <Plus className="size-7" strokeWidth={2.4} />
+              <Plus
+                className={cn(
+                  "size-7 transition-transform duration-200",
+                  chooserOpen && "rotate-45",
+                )}
+                strokeWidth={2.4}
+              />
             </button>
           </div>
           <BottomLink {...NAV[1]} active={isActive(NAV[1].href)} />
@@ -149,5 +215,36 @@ function BottomLink({
       <Icon className="size-5" strokeWidth={active ? 2.2 : 1.8} />
       {label}
     </Link>
+  );
+}
+
+function ChooserButton({
+  label,
+  icon: Icon,
+  className,
+  tabIndex,
+  onClick,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  className?: string;
+  tabIndex: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      tabIndex={tabIndex}
+      onClick={onClick}
+      className="flex h-14 w-44 items-center gap-3 rounded-2xl bg-background px-4 text-base font-medium shadow-lg ring-1 ring-foreground/10 transition-transform active:scale-95"
+    >
+      <span
+        className={cn("flex size-8 items-center justify-center rounded-full bg-muted", className)}
+      >
+        <Icon className="size-5" />
+      </span>
+      {label}
+    </button>
   );
 }

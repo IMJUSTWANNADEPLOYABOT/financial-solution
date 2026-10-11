@@ -9,7 +9,7 @@ export default function GlobalError(props: {
   return (
     <html lang="ru">
       <body style={{ margin: 0 }}>
-        <title>Ошибка · Finance Auditor</title>
+        <title>Ошибка · Олечкины финансы</title>
         <ErrorScreen {...props} />
       </body>
     </html>

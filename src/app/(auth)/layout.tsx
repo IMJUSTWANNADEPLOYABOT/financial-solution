@@ -11,7 +11,7 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Logo className="size-12" />
-          <h1 className="text-2xl font-semibold tracking-tight">Finance Auditor</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Олечкины финансы</h1>
         </div>
         {children}
       </div>

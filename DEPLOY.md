@@ -1,4 +1,4 @@
-# Деплой Finance Auditor
+# Деплой «Олечкиных финансов»
 
 Приложение работает в одном Docker-контейнере (Next.js standalone + SQLite) и открывается по адресу
 **https://andrewha.tech/finance-auditor**. Nginx на хосте проксирует этот путь в контейнер.

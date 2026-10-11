@@ -29,6 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Category, Transaction, TransactionKind } from "@/db/schema";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { amountToInput, formatMoney, parseAmount } from "@/lib/money";
 import { fromISODate, toISODate, todayInTimezone } from "@/lib/period";
 import { cn } from "@/lib/utils";
@@ -90,6 +91,11 @@ export function TransactionSheetProvider({
 
   const value = useMemo(() => ({ open, categories, timezone }), [open, categories, timezone]);
   const editing = state.options.transaction;
+  const title = editing
+    ? "Редактирование"
+    : state.options.kind
+      ? KIND_TITLE[state.options.kind]
+      : "Новая операция";
 
   return (
     <TransactionSheetContext value={value}>
@@ -97,7 +103,8 @@ export function TransactionSheetProvider({
       <ResponsiveModal
         open={state.open}
         onOpenChange={(o) => setState((s) => ({ ...s, open: o }))}
-        title={editing ? "Редактирование" : "Новая операция"}
+        title={title}
+        className="sm:max-w-3xl md:max-h-[calc(100dvh-2rem)] md:overflow-y-auto"
       >
         <TransactionForm
           key={state.key}
@@ -110,6 +117,11 @@ export function TransactionSheetProvider({
     </TransactionSheetContext>
   );
 }
+
+const KIND_TITLE: Record<TransactionKind, string> = {
+  expense: "Новый расход",
+  income: "Новый доход",
+};
 
 function TransactionForm({
   options,
@@ -135,6 +147,12 @@ function TransactionForm({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const amountRef = useRef<HTMLInputElement>(null);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  // На телефоне тип выбирают до открытия формы (кнопка «+»): открытая клавиатура сдвигает шторку,
+  // и переключатель становится недоступен. Поэтому переключатель там показываем, только когда тип
+  // не выбран заранее, и тогда же не открываем клавиатуру сами. При редактировании — тоже не открываем.
+  const kindPreset = !tx && !!options.kind;
+  const autoFocusAmount = !tx && (isDesktop || kindPreset);
 
   const visible = categories.filter(
     (c) => c.kind === kind && (!c.archived || c.id === tx?.categoryId),
@@ -199,120 +217,129 @@ function TransactionForm({
 
   return (
     <form
-      className="grid gap-4"
+      className="grid gap-4 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-x-6"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
     >
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="radiogroup">
-        {(["expense", "income"] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            role="radio"
-            aria-checked={kind === k}
-            onClick={() => {
-              setKind(k);
-              setCategoryId(null);
-            }}
-            className={cn(
-              "h-9 rounded-lg text-sm font-medium text-muted-foreground transition-colors",
-              kind === k && "bg-background text-foreground shadow-sm",
-            )}
-          >
-            {k === "expense" ? "Расход" : "Доход"}
-          </button>
-        ))}
-      </div>
-
-      <div>
+      {/* На ПК: слева поля и кнопки, справа категории — так окно ниже и помещается на небольших экранах. */}
+      <div className="grid content-start gap-4 md:col-start-1 md:row-start-1">
         <div
           className={cn(
-            "flex items-baseline gap-2 border-b-2 border-border pb-1 transition-colors focus-within:border-primary-strong",
-            amountError && "border-destructive focus-within:border-destructive",
+            "grid-cols-2 gap-1 rounded-xl bg-muted p-1",
+            kindPreset ? "hidden md:grid" : "grid",
           )}
+          role="radiogroup"
         >
-          <input
-            ref={amountRef}
-            autoFocus
-            inputMode="decimal"
-            enterKeyHint="done"
-            placeholder="0"
-            aria-label="Сумма"
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value.replace(/[^\d.,\s]/g, ""));
-              setAmountError(null);
-            }}
-            className="w-full min-w-0 bg-transparent text-4xl font-semibold tracking-tight tabular outline-none placeholder:text-muted-foreground/40"
-          />
-          <span className="text-3xl font-medium text-muted-foreground">₽</span>
-        </div>
-        {amountError && <p className="mt-1 text-sm text-destructive">{amountError}</p>}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { value: today, label: "Сегодня" },
-          { value: yesterday, label: "Вчера" },
-        ].map((d) => (
-          <Button
-            key={d.value}
-            type="button"
-            size="sm"
-            variant={date === d.value ? "secondary" : "ghost"}
-            className={cn("h-8 rounded-full px-3", date === d.value && "text-primary-strong")}
-            onClick={() => setDate(d.value)}
-          >
-            {d.label}
-          </Button>
-        ))}
-        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button
+          {(["expense", "income"] as const).map((k) => (
+            <button
+              key={k}
               type="button"
-              size="sm"
-              variant={date !== today && date !== yesterday ? "secondary" : "ghost"}
+              role="radio"
+              aria-checked={kind === k}
+              onClick={() => {
+                setKind(k);
+                setCategoryId(null);
+              }}
               className={cn(
-                "h-8 rounded-full px-3",
-                date !== today && date !== yesterday && "text-primary-strong",
+                "h-9 rounded-lg text-sm font-medium text-muted-foreground transition-colors",
+                kind === k && "bg-background text-foreground shadow-sm",
               )}
             >
-              <CalendarDays />
-              {date !== today && date !== yesterday
-                ? format(fromISODate(date), "d MMM yyyy", { locale: ru })
-                : "Дата"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              locale={dayPickerRu}
-              selected={fromISODate(date)}
-              defaultMonth={fromISODate(date)}
-              onSelect={(d) => {
-                if (d) setDate(toISODate(d));
-                setCalendarOpen(false);
+              {k === "expense" ? "Расход" : "Доход"}
+            </button>
+          ))}
+        </div>
+
+        <div>
+          <div
+            className={cn(
+              "flex items-baseline gap-2 border-b-2 border-border pb-1 transition-colors focus-within:border-primary-strong",
+              amountError && "border-destructive focus-within:border-destructive",
+            )}
+          >
+            <input
+              ref={amountRef}
+              autoFocus={autoFocusAmount}
+              inputMode="decimal"
+              enterKeyHint="done"
+              placeholder="0"
+              aria-label="Сумма"
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value.replace(/[^\d.,\s]/g, ""));
+                setAmountError(null);
               }}
+              className="w-full min-w-0 bg-transparent text-4xl font-semibold tracking-tight tabular outline-none placeholder:text-muted-foreground/40"
             />
-          </PopoverContent>
-        </Popover>
+            <span className="text-3xl font-medium text-muted-foreground">₽</span>
+          </div>
+          {amountError && <p className="mt-1 text-sm text-destructive">{amountError}</p>}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { value: today, label: "Сегодня" },
+            { value: yesterday, label: "Вчера" },
+          ].map((d) => (
+            <Button
+              key={d.value}
+              type="button"
+              size="sm"
+              variant={date === d.value ? "secondary" : "ghost"}
+              className={cn("h-8 rounded-full px-3", date === d.value && "text-primary-strong")}
+              onClick={() => setDate(d.value)}
+            >
+              {d.label}
+            </Button>
+          ))}
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={date !== today && date !== yesterday ? "secondary" : "ghost"}
+                className={cn(
+                  "h-8 rounded-full px-3",
+                  date !== today && date !== yesterday && "text-primary-strong",
+                )}
+              >
+                <CalendarDays />
+                {date !== today && date !== yesterday
+                  ? format(fromISODate(date), "d MMM yyyy", { locale: ru })
+                  : "Дата"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                locale={dayPickerRu}
+                selected={fromISODate(date)}
+                defaultMonth={fromISODate(date)}
+                onSelect={(d) => {
+                  if (d) setDate(toISODate(d));
+                  setCalendarOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <Input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Комментарий"
+          maxLength={200}
+          className="h-10"
+        />
       </div>
 
-      <Input
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        placeholder="Комментарий"
-        maxLength={200}
-        className="h-10"
-      />
-
-      <div>
+      <div className="md:col-start-2 md:row-span-2 md:row-start-1">
         <p className="mb-2 text-xs text-muted-foreground">
           {tx ? "Категория" : "Выбери категорию — запись сохранится сразу"}
         </p>
-        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-4">
+        <div className="grid grid-cols-4 gap-1.5 md:grid-cols-5">
           {visible.map((c) => (
             <button
               key={c.id}
@@ -332,7 +359,7 @@ function TransactionForm({
         </div>
       </div>
 
-      <div className="flex gap-2 pt-1">
+      <div className="flex gap-2 pt-1 md:col-start-1 md:row-start-2 md:self-end">
         {tx && (
           <Button
             type="button"
