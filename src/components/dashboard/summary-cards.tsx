@@ -4,21 +4,36 @@ import { Card } from "@/components/ui/card";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
-type Props = { expense: number; income: number; balance: number; days: number };
+type Props = {
+  expense: number;
+  income: number;
+  balance: number;
+  days: number;
+  filtered?: boolean;
+  fullExpense?: number;
+};
 
-export function SummaryCards({ expense, income, balance, days }: Props) {
+export function SummaryCards({ expense, income, balance, days, filtered, fullExpense }: Props) {
   const perDay = days > 1 ? Math.round(expense / days) : null;
 
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <Card className="gap-1 px-5 py-4 sm:col-span-1">
-        <span className="text-sm text-muted-foreground">Расходы</span>
+        <span className="text-sm text-muted-foreground">
+          {filtered ? "Расходы с фильтром" : "Расходы"}
+        </span>
         <span className="text-3xl font-semibold tracking-tight tabular">
           {formatMoney(expense)}
         </span>
         <span className="text-xs text-muted-foreground">
           {perDay !== null ? `≈ ${formatMoney(perDay)} в день` : " "}
         </span>
+        {filtered && fullExpense !== undefined && (
+          <div className="mt-2 grid gap-1 border-t pt-2 text-xs text-muted-foreground tabular">
+            <span>Всего за период: {formatMoney(fullExpense)}</span>
+            <span>Исключено: {formatMoney(fullExpense - expense)}</span>
+          </div>
+        )}
       </Card>
       <div className="grid grid-cols-2 gap-3 sm:col-span-2">
         <Card className="gap-1 px-5 py-4">
@@ -36,7 +51,7 @@ export function SummaryCards({ expense, income, balance, days }: Props) {
               className={cn("size-4", balance < 0 ? "text-destructive" : "text-primary-strong")}
               aria-hidden
             />
-            Баланс
+            {filtered ? "Баланс с фильтром" : "Баланс"}
           </span>
           <span
             className={cn(

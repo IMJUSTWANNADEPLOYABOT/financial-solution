@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { CategoryExclusionFilter } from "@/components/category-exclusion-filter";
 import { EmptyState } from "@/components/empty-state";
 import { PeriodPicker } from "@/components/period-picker";
 import { TransactionFilters } from "@/components/transaction-filters";
 import { TransactionList } from "@/components/transaction-list";
 import { requireUser } from "@/lib/auth";
+import { CATEGORY_EXCLUSIONS_PARAM, parseCategoryExclusions } from "@/lib/category-exclusions";
 import { formatMoney } from "@/lib/money";
-import { parsePeriod, todayInTimezone } from "@/lib/period";
-import { getTransactions, type TransactionSort } from "@/lib/queries";
+import { parsePeriod, periodToSearch, todayInTimezone } from "@/lib/period";
+import { getCategories, getSummary, getTransactions, type TransactionSort } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Операции" };
 
@@ -18,6 +21,18 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
   const today = todayInTimezone(user.timezone);
   const search = await searchParams;
   const period = parsePeriod(search, today);
+  const categories = getCategories(user.id);
+  const excludedIds = parseCategoryExclusions(search[CATEGORY_EXCLUSIONS_PARAM], categories);
+  const excludedSet = new Set(excludedIds);
+  const fullSummary = excludedIds.length ? getSummary(user.id, period.from, period.to) : null;
+  const totals = new Map(fullSummary?.expenseByCategory.map((c) => [c.categoryId, c.total]));
+  const filterCategories = categories
+    .filter(
+      (c) => c.kind === "expense" && (!c.archived || totals.has(c.id) || excludedSet.has(c.id)),
+    )
+    .map((c) => ({ ...c, total: totals.get(c.id) ?? 0 }));
+  const overviewParams = new URLSearchParams(periodToSearch(period));
+  if (excludedIds.length) overviewParams.set(CATEGORY_EXCLUSIONS_PARAM, excludedIds.join(","));
 
   const str = (k: string) => (typeof search[k] === "string" ? (search[k] as string) : "");
   const kind =
@@ -35,6 +50,7 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
     to: period.to,
     kind: kind === "all" ? undefined : kind,
     categoryIds,
+    excludedExpenseCategoryIds: excludedIds,
     query: query || undefined,
     sort,
   });
@@ -43,12 +59,21 @@ export default async function TransactionsPage({ searchParams }: PageProps<"/tra
     .filter((t) => t.kind === "expense")
     .reduce((s, t) => s + t.amount, 0);
   const income = transactions.filter((t) => t.kind === "income").reduce((s, t) => s + t.amount, 0);
-  const filtered = kind !== "all" || categoryIds.length > 0 || query !== "";
+  const filtered =
+    kind !== "all" || categoryIds.length > 0 || excludedIds.length > 0 || query !== "";
 
   return (
     <div className="grid gap-5">
-      <h1 className="text-2xl font-semibold tracking-tight">Операции</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">Операции</h1>
+        <Link href={`/?${overviewParams}`} className="text-sm text-primary-strong hover:underline">
+          Вернуться в обзор
+        </Link>
+      </div>
       <PeriodPicker period={period} today={today} />
+      {excludedIds.length > 0 && (
+        <CategoryExclusionFilter categories={filterCategories} excludedIds={excludedIds} />
+      )}
       <TransactionFilters kind={kind} categoryIds={categoryIds} sort={sort} query={query} />
 
       {transactions.length > 0 && (

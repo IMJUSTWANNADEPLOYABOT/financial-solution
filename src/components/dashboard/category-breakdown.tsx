@@ -19,6 +19,7 @@ type Props = {
   income: CategoryTotal[];
   /** Параметры периода, чтобы переход в список операций сохранял выбранный период. */
   periodQuery: string;
+  expensesExcluded?: boolean;
 };
 
 function toSlices(items: CategoryTotal[]) {
@@ -39,7 +40,7 @@ function toSlices(items: CategoryTotal[]) {
   ];
 }
 
-export function CategoryBreakdown({ expense, income, periodQuery }: Props) {
+export function CategoryBreakdown({ expense, income, periodQuery, expensesExcluded }: Props) {
   const [kind, setKind] = useState<"expense" | "income">("expense");
   const items = kind === "expense" ? expense : income;
   const total = items.reduce((s, i) => s + i.total, 0);
@@ -70,7 +71,11 @@ export function CategoryBreakdown({ expense, income, periodQuery }: Props) {
 
       {items.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-          {kind === "expense" ? "Расходов за период нет" : "Доходов за период нет"}
+          {kind === "expense"
+            ? expensesExcluded
+              ? "Все расходы за период исключены"
+              : "Расходов за период нет"
+            : "Доходов за период нет"}
         </p>
       ) : (
         <div className="grid items-center gap-6 px-5 sm:grid-cols-[13rem_1fr]">
@@ -131,6 +136,7 @@ export function CategoryBreakdown({ expense, income, periodQuery }: Props) {
               const share = item.total / total;
               const params = new URLSearchParams(periodQuery);
               params.set("cat", item.categoryId);
+              params.set("type", kind);
               return (
                 <li key={item.categoryId}>
                   <Link

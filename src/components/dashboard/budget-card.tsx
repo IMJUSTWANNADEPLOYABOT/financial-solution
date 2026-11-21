@@ -41,10 +41,12 @@ export function BudgetCard({
   status,
   categories,
   today,
+  filtered = false,
 }: {
   status: Status | null;
   categories: Category[];
   today: string;
+  filtered?: boolean;
 }) {
   // Без лимитов карточку не показываем: лимит задаётся в настройках.
   if (!status) return null;
@@ -63,7 +65,10 @@ export function BudgetCard({
   return (
     <Card className="gap-4 py-5">
       <CardHeader className="flex flex-row items-center justify-between px-5">
-        <CardTitle className="text-base">Лимиты · {month}</CardTitle>
+        <div className="grid gap-1">
+          <CardTitle className="text-base">Лимиты · {month}</CardTitle>
+          {filtered && <p className="text-xs text-muted-foreground">Все расходы, без исключений</p>}
+        </div>
         <Link
           href="/settings#budgets"
           aria-label="Настроить лимиты"

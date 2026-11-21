@@ -20,6 +20,8 @@ export const users = sqliteTable("users", {
   currency: text("currency").notNull().default("RUB"),
   // IANA-зона пользователя: нужна, чтобы понять, какое у него сейчас «сегодня».
   timezone: text("timezone").notNull().default("Europe/Moscow"),
+  // Версия объявления, которую пользователь подтвердил на любом из своих устройств.
+  seenAnnouncement: text("seen_announcement"),
   createdAt: createdAt(),
 });
 

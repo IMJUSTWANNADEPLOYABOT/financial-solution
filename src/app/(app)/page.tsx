@@ -3,6 +3,7 @@ import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { ChevronRight } from "lucide-react";
 
+import { CategoryExclusionFilter } from "@/components/category-exclusion-filter";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { CategoryBreakdown } from "@/components/dashboard/category-breakdown";
 import { SpendingChart, type SpendingPoint } from "@/components/dashboard/spending-chart";
@@ -11,6 +12,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PeriodPicker } from "@/components/period-picker";
 import { TransactionList } from "@/components/transaction-list";
 import { requireUser } from "@/lib/auth";
+import { CATEGORY_EXCLUSIONS_PARAM, parseCategoryExclusions } from "@/lib/category-exclusions";
 import {
   eachDay,
   parsePeriod,
@@ -61,17 +63,43 @@ function buildSeries(
 export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   const user = await requireUser();
   const today = todayInTimezone(user.timezone);
-  const period = parsePeriod(await searchParams, today);
+  const search = await searchParams;
+  const period = parsePeriod(search, today);
 
-  const summary = getSummary(user.id, period.from, period.to);
   const categories = getCategories(user.id);
+  const excludedIds = parseCategoryExclusions(search[CATEGORY_EXCLUSIONS_PARAM], categories);
+  const excludedSet = new Set(excludedIds);
+  const fullSummary = getSummary(user.id, period.from, period.to);
+  const expenseByCategory = fullSummary.expenseByCategory.filter(
+    (c) => !excludedSet.has(c.categoryId),
+  );
+  const expense = expenseByCategory.reduce((sum, c) => sum + c.total, 0);
+  const summary = {
+    ...fullSummary,
+    expense,
+    balance: fullSummary.income - expense,
+    expenseByCategory,
+  };
+  const totals = new Map(fullSummary.expenseByCategory.map((c) => [c.categoryId, c.total]));
+  const filterCategories = categories
+    .filter(
+      (c) => c.kind === "expense" && (!c.archived || totals.has(c.id) || excludedSet.has(c.id)),
+    )
+    .map((c) => ({ ...c, total: totals.get(c.id) ?? 0 }));
+  const filtered = excludedIds.length > 0;
+  const allExpensesExcluded = fullSummary.expense > 0 && expense === 0;
   // Лимиты считаются по месяцу выбранного периода (если он в одном месяце), иначе — по текущему.
   const budgetDate =
     period.from.slice(0, 7) === period.to.slice(0, 7) && !periodContains(period, today)
       ? period.from
       : today;
   const budgetStatus = getBudgetStatus(user.id, budgetDate);
-  const recent = getTransactions(user.id, { from: period.from, to: period.to, limit: 6 });
+  const recent = getTransactions(user.id, {
+    from: period.from,
+    to: period.to,
+    limit: 6,
+    excludedExpenseCategoryIds: excludedIds,
+  });
 
   const days = differenceInCalendarDays(parseISO(period.to), parseISO(period.from)) + 1;
   const elapsedDays = periodContains(period, today)
@@ -81,25 +109,35 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   const series =
     days > 1
       ? buildSeries(
-          getExpenseSeries(user.id, period.from, period.to, bucket),
+          getExpenseSeries(user.id, period.from, period.to, bucket, excludedIds),
           period.from,
           period.to,
           bucket,
         )
       : null;
 
-  const periodQuery = new URLSearchParams(periodToSearch(period)).toString();
-  const isEmpty = summary.expense === 0 && summary.income === 0;
+  const params = new URLSearchParams(periodToSearch(period));
+  if (filtered) params.set(CATEGORY_EXCLUSIONS_PARAM, excludedIds.join(","));
+  const periodQuery = params.toString();
+  const isEmpty = fullSummary.expense === 0 && fullSummary.income === 0;
 
   return (
     <div className="grid gap-5">
       <PeriodPicker period={period} today={today} />
+
+      <CategoryExclusionFilter
+        categories={filterCategories}
+        excludedIds={excludedIds}
+        allExpensesExcluded={allExpensesExcluded}
+      />
 
       <SummaryCards
         expense={summary.expense}
         income={summary.income}
         balance={summary.balance}
         days={elapsedDays}
+        filtered={filtered}
+        fullExpense={fullSummary.expense}
       />
 
       {isEmpty ? (
@@ -114,6 +152,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
               expense={summary.expenseByCategory}
               income={summary.incomeByCategory}
               periodQuery={periodQuery}
+              expensesExcluded={allExpensesExcluded}
             />
             {series && (
               <SpendingChart
@@ -123,7 +162,12 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
             )}
           </div>
           <div className="grid content-start gap-5">
-            <BudgetCard status={budgetStatus} categories={categories} today={today} />
+            <BudgetCard
+              status={budgetStatus}
+              categories={categories}
+              today={today}
+              filtered={filtered}
+            />
             <section>
               <div className="mb-2 flex items-center justify-between px-1">
                 <h3 className="text-sm font-semibold">Последние операции</h3>
@@ -140,7 +184,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
           </div>
         </div>
       )}
-      {isEmpty && <BudgetCard status={budgetStatus} categories={categories} today={today} />}
+      {isEmpty && (
+        <BudgetCard
+          status={budgetStatus}
+          categories={categories}
+          today={today}
+          filtered={filtered}
+        />
+      )}
     </div>
   );
 }

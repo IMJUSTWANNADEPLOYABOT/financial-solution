@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 
 import { db } from "@/db";
@@ -23,6 +23,13 @@ export type CategoryTotal = {
   total: number;
   count: number;
 };
+
+/** Исключения затрагивают только расходы; доходы всегда остаются в выборке. */
+function withoutExpenseCategories(ids: string[]): SQL | undefined {
+  return ids.length
+    ? or(eq(transactions.kind, "income"), notInArray(transactions.categoryId, ids))
+    : undefined;
+}
 
 export function getSummary(userId: string, from: string, to: string) {
   const range = and(
@@ -73,6 +80,7 @@ export function getExpenseSeries(
   from: string,
   to: string,
   bucket: "day" | "month",
+  excludedExpenseCategoryIds: string[] = [],
 ) {
   const key =
     bucket === "day" ? transactions.date : sql<string>`substr(${transactions.date}, 1, 7)`;
@@ -85,6 +93,7 @@ export function getExpenseSeries(
         eq(transactions.kind, "expense"),
         gte(transactions.date, from),
         lte(transactions.date, to),
+        withoutExpenseCategories(excludedExpenseCategoryIds),
       ),
     )
     .groupBy(key)
@@ -98,6 +107,7 @@ export type TransactionFilters = {
   to: string;
   kind?: TransactionKind;
   categoryIds?: string[];
+  excludedExpenseCategoryIds?: string[];
   query?: string;
   sort?: TransactionSort;
   limit?: number;
@@ -111,6 +121,8 @@ export function getTransactions(userId: string, f: TransactionFilters) {
   ];
   if (f.kind) where.push(eq(transactions.kind, f.kind));
   if (f.categoryIds?.length) where.push(inArray(transactions.categoryId, f.categoryIds));
+  const exclusions = withoutExpenseCategories(f.excludedExpenseCategoryIds ?? []);
+  if (exclusions) where.push(exclusions);
   if (f.query) {
     const escaped = f.query.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`);
     where.push(sql`unicode_lower(${transactions.note}) LIKE ${`%${escaped}%`} ESCAPE '\\'`);
