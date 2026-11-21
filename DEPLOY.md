@@ -14,6 +14,10 @@
 - Nginx с уже настроенным HTTPS для `andrewha.tech`
 - Свободный порт `3010` на localhost (если занят — поменяйте в `docker-compose.yml` и в конфиге Nginx)
 
+Проверенное окружение на 2026-11-21: сервер `89.110.93.182`, каталог `/opt/financial-solution`,
+архитектура `x86_64`, около 1 ГБ RAM и диск 10 ГБ. Обновление готовым образом успешно завершилось
+со статусом контейнера `healthy`. Тяжёлую сборку выполняем на ПК или в CI.
+
 ## 1. Первый запуск
 
 ```bash
@@ -23,8 +27,10 @@ cd /opt/financial-solution
 mkdir -p data
 sudo chown 1001:1001 data        # в контейнере приложение работает от пользователя с uid 1001
 
-docker compose up -d --build
-docker compose logs -f           # ждём строку «Ready»
+# Сначала передайте готовый finance-update.tar в data/ по инструкции из раздела 3.
+docker load -i data/finance-update.tar
+docker compose up -d --no-build --wait
+docker compose logs --tail=50
 ```
 
 Проверка с самого сервера:
@@ -59,14 +65,19 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ### Обновление готовым образом для маломощного VPS
 
-Соберите образ на ПК с Docker Desktop в режиме Linux-контейнеров или в CI:
+Соберите образ на ПК с Docker Desktop в режиме Linux-контейнеров или в CI. Для Windows выполните
+из корня проекта в PowerShell (это локальные команды, не SSH-сессия):
 
-```bash
+```powershell
+New-Item -ItemType Directory -Path data -Force | Out-Null
 docker build --platform linux/amd64 -t finance-auditor:latest .
-docker save -o finance-update.tar finance-auditor:latest
+if ($LASTEXITCODE -ne 0) { throw "Сборка образа не завершилась" }
+docker image save --output data/finance-update.tar finance-auditor:latest
+if ($LASTEXITCODE -ne 0) { throw "Экспорт образа не завершился" }
+scp data/finance-update.tar root@89.110.93.182:/opt/financial-solution/data/
 ```
 
-Перенесите архив через `scp` в `/opt/financial-solution/data/` на сервере. После переноса:
+Дождитесь успешного завершения передачи. Затем выполните на сервере:
 
 ```bash
 cd /opt/financial-solution &&
@@ -82,6 +93,23 @@ docker compose ps
 Миграции из образа применятся автоматически. Сборочные инструменты для SQLite находятся только
 в промежуточном этапе Dockerfile и не попадают в итоговый контейнер.
 
+После подтверждения `healthy` и проверки приложения локальные архивы переноса и образ можно
+удалить. В PowerShell из корня проекта:
+
+```powershell
+docker image rm finance-auditor:latest
+if (Test-Path -LiteralPath data/finance-update.tar) {
+  Remove-Item -LiteralPath data/finance-update.tar
+}
+if (Test-Path -LiteralPath data/finance-update.tar.gz) {
+  Remove-Item -LiteralPath data/finance-update.tar.gz
+}
+```
+
+Тестовые контейнеры запускайте с `--rm`: после остановки они удалятся автоматически.
+Удаление локального образа и архивов не затрагивает работающий сервер. Для очистки кэша сборки
+выбирайте только записи данного проекта; общая очистка Docker может затронуть другие проекты.
+
 ### Обновление со сборкой на сервере с достаточными ресурсами
 
 Обычное обновление (без изменений в базе):
@@ -93,16 +121,15 @@ docker compose up -d --build
 docker image prune -f            # необязательно: удалить старые образы
 ```
 
-Если обновление содержит новую миграцию (файл в `drizzle/`, меняющий данные), сначала сделайте копию базы.
-База работает в режиме WAL, поэтому копировать файл нужно при остановленном контейнере:
+Если обновление содержит новую миграцию, перед запуском нового образа сделайте согласованную
+копию базы через SQLite backup API. Это учитывает данные из WAL при работающем приложении:
 
 ```bash
-cd /opt/financial-solution
-git pull
-docker compose stop
-cp data/finance.db data/finance.db.bak-$(date +%F-%H%M)
-docker compose up -d --build
-docker image prune -f            # необязательно
+cd /opt/financial-solution &&
+git pull --ff-only origin main &&
+docker compose build &&
+docker compose exec -T finance-auditor node -e 'const db = require("better-sqlite3")("/app/data/finance.db"); db.backup("/app/data/backup-before-update-" + Date.now() + ".db").then(() => db.close()).catch(e => { console.error(e); process.exit(1); });' &&
+docker compose up -d --no-build --wait
 ```
 
 Новые миграции БД применятся автоматически. Сессии пользователей сохраняются: они лежат в той же БД.
