@@ -17,8 +17,8 @@
 ## 1. Первый запуск
 
 ```bash
-git clone <url-репозитория> /opt/finance-auditor
-cd /opt/finance-auditor
+git clone <url-репозитория> /opt/financial-solution
+cd /opt/financial-solution
 
 mkdir -p data
 sudo chown 1001:1001 data        # в контейнере приложение работает от пользователя с uid 1001
@@ -54,10 +54,40 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## 3. Обновление
 
+Для текущего VPS с 1 ГБ RAM и диском 10 ГБ используйте готовый образ по инструкции ниже:
+сборка Next.js на самом сервере уже приводила к исчерпанию памяти и потере доступа по SSH.
+
+### Обновление готовым образом для маломощного VPS
+
+Соберите образ на ПК с Docker Desktop в режиме Linux-контейнеров или в CI:
+
+```bash
+docker build --platform linux/amd64 -t finance-auditor:latest .
+docker save -o finance-update.tar finance-auditor:latest
+```
+
+Перенесите архив через `scp` в `/opt/financial-solution/data/` на сервере. После переноса:
+
+```bash
+cd /opt/financial-solution &&
+docker compose exec -T finance-auditor node -e 'const db = require("better-sqlite3")("/app/data/finance.db"); db.backup("/app/data/backup-before-update-" + Date.now() + ".db").then(() => db.close()).catch(e => { console.error(e); process.exit(1); });' &&
+docker load -i data/finance-update.tar &&
+docker compose up -d --no-build --wait &&
+docker compose ps
+```
+
+`docker load` также принимает сжатый gzip-архив: в этом случае укажите имя `.tar.gz`.
+Для этой команды Compose нужен образ с тегом `finance-auditor:latest`, платформа сервера —
+`linux/amd64` (`uname -m` возвращает `x86_64`). Флаг `--no-build` исключает повторную сборку на VPS.
+Миграции из образа применятся автоматически. Сборочные инструменты для SQLite находятся только
+в промежуточном этапе Dockerfile и не попадают в итоговый контейнер.
+
+### Обновление со сборкой на сервере с достаточными ресурсами
+
 Обычное обновление (без изменений в базе):
 
 ```bash
-cd /opt/finance-auditor
+cd /opt/financial-solution
 git pull
 docker compose up -d --build
 docker image prune -f            # необязательно: удалить старые образы
@@ -67,7 +97,7 @@ docker image prune -f            # необязательно: удалить с
 База работает в режиме WAL, поэтому копировать файл нужно при остановленном контейнере:
 
 ```bash
-cd /opt/finance-auditor
+cd /opt/financial-solution
 git pull
 docker compose stop
 cp data/finance.db data/finance.db.bak-$(date +%F-%H%M)
@@ -93,7 +123,7 @@ docker compose exec finance-auditor node -e "
 (`crontab -e`):
 
 ```cron
-0 4 * * * cd /opt/finance-auditor && docker compose exec -T finance-auditor node -e "require('better-sqlite3')('/app/data/finance.db').backup('/app/data/backup-'+new Date().toISOString().slice(0,10)+'.db')" && find /opt/finance-auditor/data -name 'backup-*.db' -mtime +14 -delete
+0 4 * * * cd /opt/financial-solution && docker compose exec -T finance-auditor node -e "require('better-sqlite3')('/app/data/finance.db').backup('/app/data/backup-'+new Date().toISOString().slice(0,10)+'.db')" && find /opt/financial-solution/data -name 'backup-*.db' -mtime +14 -delete
 ```
 
 Восстановление: остановить контейнер → заменить `data/finance.db` копией → удалить

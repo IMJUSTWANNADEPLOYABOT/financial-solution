@@ -2,6 +2,10 @@
 
 # ---------- deps ----------
 FROM node:24-bookworm-slim AS deps
+# better-sqlite3 compiles its native module during npm ci.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 make g++ \
+ && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
